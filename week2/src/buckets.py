@@ -115,7 +115,7 @@ def greedy_search(initial_state, goal_state_func, operators_func, heuristic_func
             newNode = TreeNode(state)
             newNode.cost = cost+node.cost
             node.add_child(newNode)
-            queue.append((newNode,heuristic_bucket(newNode)));
+            queue.append((newNode,heuristic_func(newNode)));
             
         queue = sorted(queue, key=lambda x: x[1])
             
@@ -139,7 +139,7 @@ def a_star_search(initial_state, goal_state_func, operators_func, heuristic_func
             newNode = TreeNode(state)
             newNode.cost = cost+node.cost
             node.add_child(newNode)
-            queue.append((newNode,cost+heuristic_bucket(newNode)));
+            queue.append((newNode,cost+heuristic_func(newNode)));
             
         queue = sorted(queue, key=lambda x: x[1])
             
