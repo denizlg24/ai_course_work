@@ -76,14 +76,16 @@ class ConnectFourState:
         
         player = self.state[row][col]
         
+        print(f"Checking if player {player} is winner after playing in position ({row}, {col})...")
+        
         # your code here
         # check horizontal
-        for c in range(max(0, col-3), min(NUM_COLUMNS-3, col)+1):
+        for c in range(max(0, col-3), min(NUM_COLUMNS-4, col)+1):
             if all(self.state[row][c+i] == player for i in range(4)):
                 return True
         
         # check vertical
-        for r in range(max(0, row-3), min(NUM_ROWS-3, row)+1):
+        for r in range(max(0, row-3), min(NUM_ROWS-4, row)+1):
             if all(self.state[r+i][col] == player for i in range(4)):
                 return True
         
@@ -249,7 +251,6 @@ class ConnectFourGame:
             # your code here
             move = self.players[self.state.current_player].get_move(self.state)
             self.state.move(move)
-            self.state.current_player = 1 if self.state.current_player == 2 else 2
 
         if self.state.game_draw():
             if self.log:
