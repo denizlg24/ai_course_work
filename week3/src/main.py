@@ -76,8 +76,6 @@ class ConnectFourState:
         
         player = self.state[row][col]
         
-        print(f"Checking if player {player} is winner after playing in position ({row}, {col})...")
-        
         # your code here
         # check horizontal
         for c in range(max(0, col-3), min(NUM_COLUMNS-4, col)+1):
@@ -215,7 +213,13 @@ class ConnectFourState:
         """
         points = 0
         # your code here
-        
+        for row in range(NUM_ROWS):
+            if self.state[row][3] == player:
+                points += 1
+            if self.state[row][4] == player:
+                points += 2
+            if self.state[row][5] == player:
+                points += 1
         
         
         
@@ -233,6 +237,9 @@ class ConnectFourGame:
         
         self.log = log
         self.players = {1: player_1, 2: player_2}   # map player numbers to objects
+        self.state = ConnectFourState()
+        self.state.current_player = 1
+        self.game_over = False
     
     
     def play_game(self):
@@ -241,10 +248,8 @@ class ConnectFourGame:
         '''
         
         # create a new board
-        self.state = ConnectFourState()
         
         # force player_1 to play first or decide randomly who starts (1 or 2)
-        self.state.current_player = 1
         #self.state.current_player = np.random.choice([1, 2])
         
         while self.state.game_over == False:
@@ -282,12 +287,147 @@ class RandomPlayer(Player):
     
     def get_move(self, game):
         return np.random.choice(game.available_moves())
+    
+class HumanPlayer(Player):
+    
+    def __init__(self,name):
+        self.name = name
+    
+    def get_move(self, game):
+        '''
+        Returns a move as chosen by the user. The user choice is validated to ensure it is an available move.
+        '''
+        print("Available moves:", game.available_moves())
+        while True:
+            try:
+                move = int(input(f"Enter your move (0-6): "))
+                if move in game.available_moves():
+                    return move
+                else:
+                    print("Invalid move. Please try again.")
+            except ValueError:
+                print("Please enter a valid integer.")
         
         
+def eval_game_over(game_state, player):
+    if game_state.game_over:
+        if game_state.winning_player == 0:
+            return 0
+        else:
+            if game_state.winning_player == player:
+                return 1000
+            else: return -1000
+    else: return 0
+
+def eval1(game_state, player):
+    if game_state.game_over:
+        return eval_game_over(game_state, player)
+    return game_state.number_of_lines_with_four_pieces(player) - game_state.number_of_lines_with_four_pieces(3 - player)
+    
+    
+
+def eval2(game_state, player):
+    if game_state.game_over:
+        return eval_game_over(game_state, player)
+    return 100 * eval1(game_state, player) + 10 * game_state.number_of_winning_spots(player) - 10 * game_state.number_of_winning_spots(3 - player)
+    # your code here
+    
+    
+
+def eval3(game_state, player):
+    if game_state.game_over:
+        return eval_game_over(game_state, player)
+    return 100 * eval1(game_state, player) + game_state.central_points(player) - game_state.central_points(3 - player)
+    # your code here
+    
+    
+
+def eval4(game_state, player):
+    if game_state.game_over:
+        return eval_game_over(game_state, player)        
+    return 5 * eval2(game_state, player) + eval3(game_state, player)
         
+
+import copy
+
+class MinimaxPlayer(Player):
+    
+    def __init__(self, name, eval_func, depth):
+        self.name = name
+        self.eval_func = eval_func
+        self.depth = depth
+    
+    
+    def _simulate_move(self, game_state, column):
+        """Create a copy of game_state with the move applied"""
         
+        new_state = copy.deepcopy(game_state)
+        new_state.move(column)
+        return new_state
+    
+    
+    def get_move(self, game_state):
+        """Find the best move using the Minimax alpha-beta algorithm"""
         
+        move = self.minimax_alpha_beta_search(game_state)
+        return move
+    
+    
+    def minimax_alpha_beta_search(self, game_state):
+        '''
+        Returns the move with the best minimax value.
+        '''
         
+        player = game_state.current_player
+        _, move = self.max_value(game_state, self.depth, float('-inf'), float('inf'), player)
+        return move
+    
+    
+    def max_value(self, state, depth, alpha, beta, original_player):
+        '''
+        Returns the evaluation and the move with the max minimax value.
+        '''
+        print(f"Max: depth={depth}, alpha={alpha}, beta={beta}, state=\n{state}\n")
+        if depth == 0 or state.game_over:
+            # Evaluate always from the perspective of the AI that started the search
+            return self.eval_func(state, original_player), None
+        
+        # your code here
+        value = float('-inf')
+        best_move = None
+        for move in state.available_moves():
+            new_state = self._simulate_move(state,move)
+            new_value, _ = self.min_value(new_state, depth-1, alpha, beta, original_player)
+            if new_value > value:
+                value = new_value
+                best_move = move
+            if value >= beta:
+                return value, best_move
+            alpha = max(alpha, value)
+        
+        return value, best_move
+    
+    def min_value(self, state, depth, alpha, beta, original_player):
+        '''
+        Returns the evaluation and the move with the min minimax value.
+        '''
+        if depth == 0 or state.game_over:
+            # Evaluate always from the perspective of the AI that started the search
+            return self.eval_func(state, original_player), None
+        
+        value = float('inf')
+        best_move = None
+        for move in state.available_moves():
+            new_state = self._simulate_move(state,move)
+            new_value, _ = self.max_value(new_state, depth-1, alpha, beta, original_player)
+            if new_value < value:
+                value = new_value
+                best_move = move
+            if value <= alpha:
+                return value, best_move
+            beta = min(beta, value)
+        return value, best_move
+        # your code here
         
         
         
@@ -296,7 +436,9 @@ class RandomPlayer(Player):
         
 
 if __name__ == "__main__":
-    random_player_1 = RandomPlayer(name = 'random_1')
-    random_player_2 = RandomPlayer(name = 'random_2')
-    game = ConnectFourGame(random_player_1, random_player_2, log=True)
+    # random_player_1 = RandomPlayer(name = 'random_1')
+    # random_player_2 = HumanPlayer(name = 'human_2')
+    minimax_player_1 = MinimaxPlayer(name = 'minimax_1', eval_func=eval1, depth=4)
+    minimax_player_2 = MinimaxPlayer(name = 'minimax_2', eval_func=eval2, depth=5)
+    game = ConnectFourGame(minimax_player_1, minimax_player_2, log=True)
     game.play_game()
